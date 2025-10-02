@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BillBuddy: Energy Consumption Estimator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="app.css">
+</head>
+
+<body class="bg-gray-50 h-screen overflow-hidden">
+
+    <div id="error-container" class="fixed top-4 right-4 z-50 space-y-2">
+    </div>
+
+    <div id="login-view" class="flex items-center justify-center w-full h-full">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">Welcome to BillBuddy</h2>
+            <p class="text-center text-gray-500 mb-8">Energy Consumption Estimator</p>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="login-username" class="block text-sm font-medium text-gray-700">Username / Email</label>
+                    <input type="text" id="login-username" name="username" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Password (Admin:
+                        admin/admin17193)</label>
+                    <input type="password" id="login-password" name="password" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+                <button type="submit" class="w-full btn-primary py-2 text-lg font-semibold tracking-wider">
+                    Log In
+                </button>
+            </form>
+            <p class="mt-4 text-sm text-center text-gray-500">
+                *Customer login uses your registered email/name (password is ignored for this simulation).
+            </p>
+        </div>
+    </div>
+
+    <div id="app-view" class="hidden w-full h-full flex">
+
+        <div id="sidebar" class="w-64 bg-gray-800 text-white flex flex-col p-5 shadow-lg">
+            <h1 class="text-3xl font-extrabold mb-8 text-emerald-400">BillBuddy</h1>
+            <div id="user-info-box" class="mb-8 p-3 bg-gray-700 rounded-lg text-sm">
+                <p class="font-semibold">Logged in as:</p>
+                <p id="profile-name" class="text-emerald-300"></p>
+                <p id="profile-role" class="text-xs italic"></p>
+            </div>
+
+            <nav class="flex-grow space-y-2">
+                <div id="nav-dashboard" class="sidebar-item active" onclick="showView('dashboard')">
+                    <svg class="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                        </path>
+                    </svg>
+                    Dashboard
+                </div>
+                <div id="nav-customers" class="sidebar-item admin-only hidden" onclick="showView('customers')">
+                    <svg class="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20v-2a3 3 0 00-5.356-1.857M17 20v-2a3 3 0 00-5.356-1.857M12 18h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    Manage Customers
+                </div>
+                <div id="nav-add-app" class="sidebar-item" onclick="openAddApplicationModal()">
+                    <svg class="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Add Application
+                </div>
+                <div id="nav-reports" class="sidebar-item" onclick="showView('reports')">
+                    <svg class="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0h6">
+                        </path>
+                    </svg>
+                    Reports & Charts
+                </div>
+                <div id="nav-energy-tips" class="sidebar-item" onclick="showView('tips')">
+                    <svg class="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M19 12h-1M5.636 19.364l.707-.707M6 12H4m12.364-7.636l.707.707M12 20.25V21M4 12H3m2.25 7.75L4.5 19.5M12 12a3 3 0 110-6 3 3 0 010 6z">
+                        </path>
+                    </svg>
+                    Energy Saving Tips
+                </div>
+            </nav>
+
+            <button id="logout-btn" onclick="logout()"
+                class="mt-4 w-full bg-red-600 hover:bg-red-700 py-2 rounded-lg font-semibold transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20"
+                    fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-2 0V4H5v12h10v-2a1 1 0 112 0v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3z"
+                        clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M11 11a1 1 0 000 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                </svg> Exit / Logout
+            </button>
+        </div>
+
+        <main class="flex-1 overflow-y-auto p-8" id="main-content-area">
+            <header class="mb-8">
+                <h2 class="text-4xl font-extrabold text-gray-900">Energy Dashboard</h2>
+                <p id="current-customer-display" class="text-xl text-gray-600 mt-1"></p>
+            </header>
+
+            <div id="admin-controls" class="mb-6 admin-only hidden">
+                <label for="customer-select" class="block text-sm font-medium text-gray-700 mb-2">Select Customer to
+                    View/Manage:</label>
+                <div class="flex space-x-4">
+                    <select id="customer-select"
+                        class="block w-96 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                        onchange="selectCustomer(this.value)">
+                        <option value="">Select a Customer...</option>
+                    </select>
+                </div>
+            </div>
+
+            <section id="dashboard" class="content-section">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="dashboard-totals">
+                    <div class="summary-card">
+                        <p class="text-sm font-medium text-gray-500">Daily Cost Total</p>
+                        <p id="daily-cost-total" class="mt-1 text-3xl font-bold text-gray-900">₹0.00</p>
+                    </div>
+                    <div class="summary-card">
+                        <p class="text-sm font-medium text-gray-500">Monthly Cost Total</p>
+                        <p id="monthly-cost-total" class="mt-1 text-3xl font-bold text-gray-900">₹0.00</p>
+                    </div>
+                    <div class="summary-card">
+                        <p class="text-sm font-medium text-gray-500">Yearly Cost Total</p>
+                        <p id="yearly-cost-total" class="mt-1 text-3xl font-bold text-gray-900">₹0.00</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Application Usage Breakdown (Last 30 Days)
+                        </h3>
+                        <div class="h-80">
+                            <canvas id="app-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Cost Trend (Daily/Monthly)</h3>
+                        <div class="h-80">
+                            <canvas id="time-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 card p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Application Usage Log</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Application Name</th>
+                                    <th>QTY</th>
+                                    <th>Watts (W)</th>
+                                    <th>Hrs/Day</th>
+                                    <th>Daily kWh</th>
+                                    <th>Daily Cost (₹)</th>
+                                    <th>Date/Time</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customer-applications-table-body" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                    <button onclick="openAddApplicationModal()" class="mt-4 btn-secondary text-sm">
+                        + Add New Usage
+                    </button>
+                    <button onclick="generatePDF(userState.selectedCustomerId)" id="download-pdf-btn"
+                        class="mt-4 btn-download text-sm ml-4">
+                        <svg class="h-4 w-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                        Download Report (PDF)
+                    </button>
+                </div>
+            </section>
+
+            <section id="customers" class="content-section hidden admin-only">
+                <h3 class="text-2xl font-bold mb-4">Customer Management</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="openAddCustomerModal()" class="btn-primary">
+                        + Add New Customer
+                    </button>
+                    <div class="relative">
+                        <input type="text" id="customer-search" placeholder="Search customers..."
+                            class="pl-10 pr-4 py-2 border rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                            onkeyup="searchCustomers()">
+                        <svg class="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="card p-6 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email ID</th>
+                                <th>Phone Number</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customer-list-body" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="reports" class="content-section hidden">
+                <h3 class="text-2xl font-bold mb-4">Cost Analysis & Reports</h3>
+
+                <div class="card p-6 mb-6 flex items-end space-x-4">
+                    <div class="flex-1">
+                        <label for="analysis-period-select" class="block text-sm font-medium text-gray-700 mb-1">Select
+                            Period</label>
+                        <select id="analysis-period-select" class="px-3 py-2 border border-gray-300 rounded-lg w-full"
+                            onchange="handlePeriodChange(this.value)">
+                            <option value="month">Monthly Summary</option>
+                            <option value="year">Yearly Summary</option>
+                            <option value="custom">Custom Date Range</option>
+                        </select>
+                    </div>
+                    <div id="date-input-container" class="flex-1">
+                        <label for="analysis-date-input" class="block text-sm font-medium text-gray-700 mb-1">Select
+                            Date</label>
+                        <input type="month" id="analysis-date-input"
+                            class="px-3 py-2 border border-gray-300 rounded-lg w-full" onchange="fetchCostAnalysis()">
+                    </div>
+                    <div class="flex-1 hidden" id="end-date-input-container">
+                        <label for="analysis-end-date-input" class="block text-sm font-medium text-gray-700 mb-1">End
+                            Date</label>
+                        <input type="date" id="analysis-end-date-input"
+                            class="px-3 py-2 border border-gray-300 rounded-lg w-full" onchange="fetchCostAnalysis()">
+                    </div>
+                    <button onclick="fetchCostAnalysis()" class="btn-primary h-10 w-24">
+                        Apply
+                    </button>
+                </div>
+
+                <div class="card p-6 mb-6">
+                    <p class="text-sm font-medium text-gray-500">Total Consumption Cost for <span
+                            id="summary-period-label">This Month</span></p>
+                    <p id="summary-cost-total" class="mt-1 text-4xl font-bold text-red-600">₹0.00</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Cost Breakdown by Application</h3>
+                        <div class="h-80">
+                            <canvas id="report-app-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Cost Trend Over Time</h3>
+                        <div class="h-80">
+                            <canvas id="report-time-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <section id="tips" class="content-section hidden">
+                <h3 class="text-2xl font-bold mb-4">Energy Saving Tips (Energy_Saving Group)</h3>
+                <div class="card p-6 space-y-4" id="tips-container">
+                    <p class="text-gray-600">Select an application from the usage list on the Dashboard to get
+                        application-specific tips, or view general tips below:</p>
+                    <div id="general-tips" class="space-y-3">
+                        <h4 class="text-lg font-semibold text-emerald-600">General Tips for Home:</h4>
+                        <ul class="list-disc list-inside space-y-1 text-gray-700">
+                            <li>Switch to LED bulbs for maximum light output at minimal wattage.</li>
+                            <li>Unplug electronics (phantom loads) when not in use.</li>
+                            <li>Set your Air Conditioner thermostat a few degrees higher to save a significant amount of
+                                energy.</li>
+                            <li>Use washing machines and dishwashers only when they are fully loaded.</li>
+                            <li>Consider using a programmable thermostat to optimize heating and cooling schedules.</li>
+                            <li>Seal windows and doors to prevent air leaks and improve insulation.</li>
+                            <li>Regularly maintain appliances to ensure they are running efficiently.</li>
+                            <li>Use natural light during the day instead of electric lighting.</li>
+                            <li>Consider energy-efficient appliances when replacing old ones.</li>
+                            <li>Reduce water heating expenses by using less hot water and insulating your water heater.</li>
+                        </ul>
+                    </div>
+                    <div id="specific-tip" class="hidden border-t pt-4">
+                        <h4 class="text-lg font-semibold text-blue-600">Tip for: <span
+                                id="specific-tip-app-name"></span></h4>
+                        <p id="specific-tip-content" class="mt-2 text-gray-700"></p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+    </div>
+
+    <div id="add-application-modal"
+        class="modal-overlay fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center p-4 z-40">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Add New Application Usage</h3>
+            <form id="add-application-form" class="space-y-4">
+                <div>
+                    <label for="add-app-name" class="block text-sm font-medium text-gray-700">Application Name</label>
+                    <select id="add-app-name" name="application_name" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm"
+                        onchange="updateWattsDisplay(true)">
+                        <option value="">Select an Application (e.g., LED Light Bulb)</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="add-app-date" class="block text-sm font-medium text-gray-700">Date/Time of
+                            Usage</label>
+                        <input type="datetime-local" id="add-app-date" name="date_time" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="add-app-watts-display" class="block text-sm font-medium text-gray-700">Watts
+                            (W) - Auto-filled</label>
+                        <input type="text" id="add-app-watts-display" readonly
+                            class="mt-1 block w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg">
+                        <input type="hidden" id="add-app-watts" name="watts">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="add-app-qty" class="block text-sm font-medium text-gray-700">QTY of
+                            Application</label>
+                        <input type="number" id="add-app-qty" name="qty" min="1" value="1" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="add-app-hours" class="block text-sm font-medium text-gray-700">Hours/Day
+                            (h)</label>
+                        <input type="number" id="add-app-hours" name="hours_day" min="0.1" max="24" step="0.1" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+                        onclick="closeModal('add-application-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary text-sm font-medium">Add Application</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-application-modal"
+        class="modal-overlay fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center p-4 z-40">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Edit Application Usage</h3>
+            <form id="edit-application-form" class="space-y-4">
+                <input type="hidden" id="edit-app-id" name="cust_app_id">
+                <p class="text-lg font-semibold text-gray-800" id="edit-app-name-display"></p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="edit-app-date" class="block text-sm font-medium text-gray-700">Date/Time of
+                            Usage</label>
+                        <input type="datetime-local" id="edit-app-date" name="date_time" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="edit-app-watts-display" class="block text-sm font-medium text-gray-700">Watts
+                            (W) - Fixed</label>
+                        <input type="text" id="edit-app-watts-display" readonly
+                            class="mt-1 block w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-lg">
+                        <input type="hidden" id="edit-app-watts">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="edit-app-qty" class="block text-sm font-medium text-gray-700">QTY of
+                            Application</label>
+                        <input type="number" id="edit-app-qty" name="qty" min="1" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="edit-app-hours" class="block text-sm font-medium text-gray-700">Hours/Day
+                            (h)</label>
+                        <input type="number" id="edit-app-hours" name="hours_day" min="0.1" max="24" step="0.1" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+                        onclick="closeModal('edit-application-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary text-sm font-medium">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="add-customer-modal"
+        class="modal-overlay fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center p-4 z-40">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Add New Customer</h3>
+            <form id="add-customer-form" class="space-y-4">
+                <div>
+                    <label for="add-customer-name" class="block text-sm font-medium text-gray-700">Customer Name</label>
+                    <input type="text" id="add-customer-name" name="name" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                </div>
+                <div>
+                    <label for="add-customer-email" class="block text-sm font-medium text-gray-700">Email ID (Used for
+                        Login)</label>
+                    <input type="email" id="add-customer-email" name="email" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                </div>
+                <div>
+                    <label for="add-customer-phone" class="block text-sm font-medium text-gray-700">Phone Number
+                        (Optional)</label>
+                    <input type="tel" id="add-customer-phone" name="phone"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+                        onclick="closeModal('add-customer-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary text-sm font-medium">Add Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-customer-modal"
+        class="modal-overlay fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center p-4 z-40">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Edit Customer Details</h3>
+            <form id="edit-customer-form" class="space-y-4">
+                <input type="hidden" id="edit-customer-id" name="customer_id">
+                <div>
+                    <label for="edit-customer-name" class="block text-sm font-medium text-gray-700">Customer
+                        Name</label>
+                    <input type="text" id="edit-customer-name" name="name" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                </div>
+                <div>
+                    <label for="edit-customer-email" class="block text-sm font-medium text-gray-700">Email ID (Used for
+                        Login)</label>
+                    <input type="email" id="edit-customer-email" name="email" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                </div>
+                <div>
+                    <label for="edit-customer-phone" class="block text-sm font-medium text-gray-700">Phone Number
+                        (Optional)</label>
+                    <input type="tel" id="edit-customer-phone" name="phone"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+                        onclick="closeModal('edit-customer-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary text-sm font-medium">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>
