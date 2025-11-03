@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BillBuddy Project Report | Interactive SPA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F3F4F6; /* Tailwind gray-100 */
+        }
+        .sidebar-link {
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover {
+            background-color: #E5E7EB; /* gray-200 */
+            color: #111827; /* gray-900 */
+        }
+        .sidebar-link.active {
+            background-color: #10B981; /* emerald-500 */
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .content-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chart-container {
+            position: relative;
+            height: 40vh;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #ffffff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .schema-table {
+            border: 2px solid #10B981; /* emerald-500 */
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .schema-table-header {
+            background-color: #10B981;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+        }
+        .schema-field {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #E5E7EB; /* gray-200 */
+        }
+        .schema-field:last-child {
+            border-bottom: none;
+        }
+        .schema-key {
+            font-weight: 500;
+            color: #374151; /* gray-700 */
+        }
+        .schema-key-pk {
+            font-weight: 600;
+            color: #D97706; /* amber-600 */
+        }
+        .schema-key-fk {
+            font-weight: 600;
+            color: #3B82F6; /* blue-500 */
+        }
+        .schema-arrow {
+            font-size: 2rem;
+            color: #9CA3AF; /* gray-400 */
+            align-self: center;
+            margin: 0 1rem;
+        }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform -translate-x-full transition-transform duration-300 md:relative md:translate-x-0 md:flex-shrink-0 md:shadow-md overflow-y-auto">
+        <div class="p-5 border-b flex items-center space-x-3">
+            <div class="p-2 bg-emerald-500 rounded-lg">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.866 10.74 8.56 12.012A11.983 11.983 0 0021 9c0-2.006-.51-3.898-1.382-5.016z"></path></svg>
+            </div>
+            <h1 class="text-xl font-bold text-gray-800">BillBuddy Report</h1>
+        </div>
+        <nav class="p-3 space-y-1">
+            <a href="#" class="nav-link sidebar-link active flex items-center space-x-3 p-3 rounded-lg text-gray-700" data-target="overview">
+                <span>1.</span>
+                <span>Project Overview</span>
+            </a>
+            <a href="#" class="nav-link sidebar-link flex items-center space-x-3 p-3 rounded-lg text-gray-700" data-target="architecture">
+                <span>2.</span>
+                <span>System Architecture</span>
+            </a>
+            <a href="#" class="nav-link sidebar-link flex items-center space-x-3 p-3 rounded-lg text-gray-700" data-target="features">
+                <span>3.</span>
+                <span>Core Features</span>
+            </a>
+            <a href="#" class="nav-link sidebar-link flex items-center space-x-3 p-3 rounded-lg text-gray-700" data-target="demo">
+                <span>4.</span>
+                <span>Interactive Demo</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-8 md:p-12">
+        
+        <button id="sidebar-toggle" class="md:hidden p-2 text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-4 rounded-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+
+        <section id="overview" class="content-section active">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">1. Project Overview</h2>
+            <div class="bg-white p-6 rounded-lg shadow space-y-4 text-gray-700 leading-relaxed">
+                <p>The **BillBuddy: Energy Consumption Estimator** is a full-stack web application designed to help administrators manage and track customer energy usage, calculate associated costs in Indian Rupees (₹), and provide insightful reports and energy-saving tips. The system supports separate login experiences for administrators and registered customers.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                        <h3 class="font-semibold text-lg text-emerald-700">Project Goal</h3>
+                        <p class="text-emerald-800 mt-1">To provide a robust, data-driven tool for estimating and managing household energy consumption and costs.</p>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h3 class="font-semibold text-lg text-blue-700">Monetary Basis</h3>
+                        <p class="text-blue-800 mt-1">All cost calculations are based on the Indian Rupee (INR), with a hardcoded rate of <strong>₹8.00 per Kilowatt-hour (kWh)</strong>.</p>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <h3 class="font-semibold text-xl text-gray-700 mb-3">Target Users</h3>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1 bg-white p-4 rounded-lg border">
+                            <h4 class="font-semibold text-lg text-gray-800">Admin</h4>
+                            <p class="text-gray-600 mt-1">Manages all customer data, application usage entries, and generates official reports.</p>
+                        </div>
+                        <div class="flex-1 bg-white p-4 rounded-lg border">
+                            <h4 class="font-semibold text-lg text-gray-800">Customer</h4>
+                            <p class="text-gray-600 mt-1">Logs in to view their personal consumption data and cost analysis.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="architecture" class="content-section">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">2. System Architecture</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Three-Tier Architecture</h3>
+                <p class="text-gray-600 mb-6">The application uses a standard three-tier architecture, separating the presentation, business logic, and data layers for modularity and scalability.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-lg font-semibold text-blue-600">1. Frontend (Presentation)</h4>
+                        <p class="text-gray-600 mt-2">A user-facing Single-Page Application (SPA) built with HTML, CSS, and Vanilla JavaScript. Manages the UI and user interactions.</p>
+                        <ul class="text-sm text-gray-500 mt-3 space-y-1 list-disc pl-5">
+                            <li><strong>Files:</strong> `app.html`, `app.css`, `app.js`</li>
+                            <li><strong>Libraries:</strong> Tailwind CSS, Chart.js, jsPDF</li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-lg font-semibold text-emerald-600">2. Backend (Logic)</h4>
+                        <p class="text-gray-600 mt-2">A RESTful API built with Python and Flask. Handles all business logic, calculations, authentication, and database communication.</p>
+                        <ul class="text-sm text-gray-500 mt-3 space-y-1 list-disc pl-5">
+                            <li><strong>File:</strong> `energy_app.py`</li>
+                            <li><strong>Actions:</strong> CRUD, Auth, Cost Calculation</li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-lg font-semibold text-amber-600">3. Database (Data)</h4>
+                        <p class="text-gray-600 mt-2">A local SQLite3 database that provides persistent storage for all application data, including users, appliances, and usage logs.</p>
+                        <ul class="text-sm text-gray-500 mt-3 space-y-1 list-disc pl-5">
+                            <li><strong>File:</strong> `app_database.py`</li>
+                            <li><strong>Tool:</strong> Python `sqlite3` library</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Database Schema Diagram</h3>
+                <p class="text-gray-600 mb-6">This diagram shows the four core tables and their relationships. Foreign Keys (FK) link usage data back to the `customer` and master `application` tables.</p>
+                <div class="flex flex-col lg:flex-row justify-between space-y-4 lg:space-y-0 lg:space-x-2 overflow-x-auto p-2">
+                    <div class="schema-table flex-1 min-w-[250px]">
+                        <div class="schema-table-header">login</div>
+                        <div class="schema-field"><span class="schema-key schema-key-pk">username</span> (PK)</div>
+                        <div class="schema-field"><span class="schema-key">password</span></div>
+                    </div>
+                    
+                    <div class="schema-table flex-1 min-w-[250px]">
+                        <div class="schema-table-header">customer</div>
+                        <div class="schema-field"><span class="schema-key schema-key-pk">customer_id</span> (PK)</div>
+                        <div class="schema-field"><span class="schema-key">customer_name</span></div>
+                        <div class="schema-field"><span class="schema-key">email_id</span> (Unique)</div>
+                        <div class="schema-field"><span class="schema-key">phone_no</span></div>
+                        <div class="schema-field"><span class="schema-key">password</span></div>
+                    </div>
+                    <div class="schema-arrow hidden lg:block">→</div>
+                    <div class="schema-table flex-1 min-w-[250px]">
+                        <div class="schema-table-header">application</div>
+                        <div class="schema-field"><span class="schema-key schema-key-pk">application_name</span> (PK)</div>
+                        <div class="schema-field"><span class="schema-key">watts</span></div>
+                    </div>
+                    <div class="schema-arrow hidden lg:block">→</div>
+                    <div class="schema-table flex-1 min-w-[300px]">
+                        <div class="schema-table-header">customer_application</div>
+                        <div class="schema-field"><span class="schema-key schema-key-pk">cust_app_id</span> (PK)</div>
+                        <div class="schema-field"><span class="schema-key schema-key-fk">customer_id</span> (FK)</div>
+                        <div class="schema-field"><span class="schema-key schema-key-fk">application_name</span> (FK)</div>
+                        <div class="schema-field"><span class="schema-key">qty</span></div>
+                        <div class="schema-field"><span class="schema-key">date_time</span></div>
+                        <div class="schema-field"><span class="schema-key">hours_day</span></div>
+                        <div class="schema-field"><span class="schema-key">daily_kwh</span> (Calc)</div>
+                        <div class="schema-field"><span class="schema-key">daily_cost</span> (Calc)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="content-section">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">3. Core Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow space-y-3">
+                    <h3 class="text-xl font-semibold text-gray-800">User Authentication & Roles</h3>
+                    <p class="text-gray-600">Secure login for two distinct user types:</p>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                        <li><strong>Admin (`Admin` / `admin17193`):</strong> Full control over all data.</li>
+                        <li><strong>Customer (Email / Password):</strong> View-only access to their own data.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow space-y-3">
+                    <h3 class="text-xl font-semibold text-gray-800">Master Data Management</h3>
+                    <p class="text-gray-600">Centralized control over key application data:</p>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                        <li><strong>Application Catalog:</strong> A non-editable list of 50 household applications and their wattage.</li>
+                        <li><strong>Customer Management:</strong> Admin can Create, Read, Update, and Delete customer profiles.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow space-y-3">
+                    <h3 class="text-xl font-semibold text-gray-800">Usage Tracking & Calculation</h3>
+                    <p class="text-gray-600">Users log daily usage (App, QTY, Hours) and the system automatically calculates:</p>
+                    <div class="bg-gray-100 p-3 rounded font-mono text-sm text-gray-700">
+                        <strong>Daily kWh:</strong> (Watts $\times$ Hours $\times$ QTY) $/$ $1000$
+                    </div>
+                    <div class="bg-emerald-50 p-3 rounded font-mono text-sm text-emerald-800 border border-emerald-200">
+                        <strong>Daily Cost (₹):</strong> Daily kWh $\times$ ₹8.00
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow space-y-3">
+                    <h3 class="text-xl font-semibold text-gray-800">Reporting & Analytics</h3>
+                    <p class="text-gray-600">A powerful reporting view with dynamic filters:</p>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                        <li><strong>Filter by Period:</strong> Daily, Monthly, Yearly, or Custom Date Range.</li>
+                        <li><strong>Application Chart:</strong> Breakdown of consumption by appliance.</li>
+                        <li><strong>Time Series Chart:</strong> Cost trends over the selected period.</li>
+                        <li><strong>Energy Saving Tips:</strong> Contextual tips based on usage.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow space-y-3 col-span-1 md:col-span-2">
+                    <h3 class="text-xl font-semibold text-gray-800">PDF Report Generation</h3>
+                    <p class="text-gray-600">Administrators can select any customer and generate a downloadable PDF report. This report contains a detailed, itemized table of that customer's usage data, suitable for billing or records.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="content-section">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">4. Interactive Demo</h2>
+            <p class="text-lg text-gray-600 mb-6 -mt-4">Test the core logic described in the project report. No data is saved.</p>
+
+            <div class="bg-white p-6 rounded-lg shadow mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Live Cost Calculator (Simulation)</h3>
+                <p class="text-sm text-gray-600 mb-4">This simulates the <strong>Automated Calculation</strong> feature. Select an appliance and see the real-time cost calculation based on the project's formula (₹8.00/kWh).</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="md:col-span-2">
+                        <label for="demo-app" class="block text-sm font-medium text-gray-700">Appliance</label>
+                        <select id="demo-app" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500">
+                            <option value="10">LED Light Bulb (10W)</option>
+                            <option value="75">Ceiling Fan (75W)</option>
+                            <option value="150">Refrigerator (150W)</option>
+                            <option value="1500">Air Conditioner (1.5 Ton) (1500W)</option>
+                            <option value="2000">Electric Water Heater (Geyser) (2000W)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="demo-hours" class="block text-sm font-medium text-gray-700">Hours Used / Day</label>
+                        <input type="number" id="demo-hours" value="8" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="demo-qty" class="block text-sm font-medium text-gray-700">Quantity</label>
+                        <input type="number" id="demo-qty" value="1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                </div>
+                <div class="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-center">
+                    <span class="block text-sm font-medium text-emerald-700">Calculated Daily Cost</span>
+                    <span id="demo-cost" class="block text-4xl font-bold text-emerald-600">₹0.64</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Dynamic Report Chart (Simulation)</h3>
+                    <p class="text-sm text-gray-600 mb-4">This simulates the <strong>Reporting & Analytics</strong> feature. Click the buttons to see the chart update with different data, just as it would when changing the time period.</p>
+                    <div class="flex space-x-2 mb-4">
+                        <button id="chart-btn-monthly" class="flex-1 bg-emerald-500 text-white px-4 py-2 rounded-md shadow hover:bg-emerald-600 transition">Monthly View (Sample)</button>
+                        <button id="chart-btn-yearly" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition">Yearly View (Sample)</button>
+                    </div>
+                    <div class="chart-container" style="height: 300px; max-width: none;">
+                        <canvas id="demo-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">PDF Report Generation (Simulation)</h3>
+                    <p class="text-sm text-gray-600 mb-4">This simulates the uploads <strong>PDF Report Generation</strong> feature. Clicking the button will use the jsPDF library to generate a simple, sample PDF with a data table.</p>
+                    <button id="demo-pdf" class="w-full bg-blue-500 text-white px-4 py-3 rounded-md shadow hover:bg-blue-600 transition text-lg font-semibold">
+                        Generate Sample PDF Report
+                    </button>
+                    <p class="text-xs text-gray-500 mt-3 text-center">This will generate a new PDF document in your browser.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentSections = document.querySelectorAll('.content-section');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            let demoChartInstance = null;
+            const { jsPDF } = window.jspdf;
+
+            // --- Mobile Sidebar Logic (NEW) ---
+            function toggleSidebar() {
+                // Toggles the class that controls the sidebar's position (on mobile screens only)
+                sidebar.classList.toggle('-translate-x-full');
+            }
+            
+            sidebarToggle.addEventListener('click', toggleSidebar);
+
+            // --- Navigation Logic ---
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('data-target');
+
+                    navLinks.forEach(nav => nav.classList.remove('active'));
+                    link.classList.add('active');
+
+                    contentSections.forEach(section => {
+                        section.classList.toggle('active', section.id === targetId);
+                    });
+                    
+                    if (targetId === 'demo') {
+                        initDemoChart();
+                    }
+
+                    // Close sidebar automatically on mobile after clicking a link (NEW)
+                    // Checks if the sidebar is currently open on a mobile screen (window width < 768px is the 'md' breakpoint)
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.add('-translate-x-full');
+                    }
+                });
+            });
+
+            // --- Interactive Demo Logic ---
+
+            // 1. Live Cost Calculator
+            const demoApp = document.getElementById('demo-app');
+            const demoHours = document.getElementById('demo-hours');
+            const demoQty = document.getElementById('demo-qty');
+            const demoCost = document.getElementById('demo-cost');
+            const COST_PER_KWH_JS = 8.0;
+
+            function updateDemoCost() {
+                const watts = parseFloat(demoApp.value) || 0;
+                const hours = parseFloat(demoHours.value) || 0;
+                const qty = parseFloat(demoQty.value) || 0;
+
+                const dailyKwh = (watts * hours * qty) / 1000;
+                const dailyCost = dailyKwh * COST_PER_KWH_JS;
+
+                demoCost.textContent = `₹${dailyCost.toFixed(2)}`;
+            }
+            [demoApp, demoHours, demoQty].forEach(el => el.addEventListener('input', updateDemoCost));
+            updateDemoCost(); // Initial calculation
+
+            // 2. Dynamic Report Chart
+            const monthlyData = {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Cost (₹) - Monthly View',
+                    data: [120, 150, 90, 130],
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 2,
+                    tension: 0.1
+                }]
+            };
+            const yearlyData = {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Cost (₹) - Yearly View',
+                    data: [500, 450, 600, 520, 700, 650],
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 2,
+                    tension: 0.1
+                }]
+            };
+
+            function initDemoChart() {
+                if (demoChartInstance) return;
+                const ctx = document.getElementById('demo-chart').getContext('2d');
+                demoChartInstance = new Chart(ctx, {
+                    type: 'bar', // Start as bar
+                    data: monthlyData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, title: { display: true, text: 'Cost (₹)' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ₹${context.raw.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            document.getElementById('chart-btn-monthly').addEventListener('click', () => {
+                if (!demoChartInstance) initDemoChart();
+                demoChartInstance.config.type = 'bar';
+                demoChartInstance.data = monthlyData;
+                demoChartInstance.update();
+            });
+
+            document.getElementById('chart-btn-yearly').addEventListener('click', () => {
+                if (!demoChartInstance) initDemoChart();
+                demoChartInstance.config.type = 'line';
+                demoChartInstance.data = yearlyData;
+                demoChartInstance.update();
+            });
+
+            // 3. PDF Generation
+            document.getElementById('demo-pdf').addEventListener('click', () => {
+                const doc = new jsPDF();
+                
+                doc.setFontSize(18);
+                doc.text("BillBuddy Sample Report", 14, 22);
+                doc.setFontSize(11);
+                doc.text("Customer: Sample Customer", 14, 32);
+                doc.text("Report Date: " + new Date().toLocaleDateString(), 14, 38);
+
+                doc.autoTable({
+                    startY: 50,
+                    head: [['Appliance', 'Date', 'Hours', 'QTY', 'Cost (₹)']],
+                    body: [
+                        ['Air Conditioner', '2025-10-20', '8.0', '1', '₹96.00'],
+                        ['Refrigerator', '2025-10-20', '24.0', '1', '₹28.80'],
+                        ['LED Light Bulb', '2025-10-20', '6.0', '4', '₹1.92'],
+                        ['Ceiling Fan', '2025-10-20', '12.0', '2', '₹14.40'],
+                    ],
+                    foot: [['', '', '', 'Total', '₹141.12']],
+                    theme: 'grid',
+                    headStyles: { fillColor: [16, 185, 129] } // Emerald
+                });
+
+                doc.save('BillBuddy_Sample_Report.pdf');
+            });
+
+            // Auto-init chart if demo is the active tab on load (e.g., if it was the last view)
+            if (document.querySelector('.content-section.active')?.id === 'demo') {
+                initDemoChart();
+            }
+        });
+    </script>
+</body>
+</html>
