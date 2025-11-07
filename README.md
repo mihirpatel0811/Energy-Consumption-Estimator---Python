@@ -79,7 +79,7 @@ The application includes a hardcoded admin user for managing customer accounts.
 
 | Role | Email ID | Password |
 | :--- | :--- | :--- |
-| **Admin** | `admin@billbuddy.com` | *Any password* |
+| **Admin** | `admin@billbuddy.com` | *admin17193* |
 
 1.  Log in as **Admin**.
 2.  Use the **Customer Management** section to add new customers (Note: The customer's email ID is used for their login).
